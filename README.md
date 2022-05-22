@@ -1,7 +1,7 @@
 
 ## Axel
 
-Threadpoolplike for managing device compute kernels
+Threadpool-like for managing device compute kernels
 
 **Note**: This is experimental, currently based of a fork of [nlvm](https://github.com/arnetheduck/nlvm), for now only nvdia GPU (via CUDA driver API) are supported.
 ```
