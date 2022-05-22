@@ -1,0 +1,13 @@
+bin
+tests/*
+- tests/*.nims
+- tests/*.nim
+
+examples/*
+- examples/*.nims
+- examples/*.nim
+
+.vscode
+/nim.cfg
+
+*.nim.ptx
