@@ -107,3 +107,6 @@ when defined(onDevice):
     let size = nmemb*size
     result = c_malloc(size)
     zeroMem(result, size)
+
+else:
+  proc abort*() {.importc: "abort", cdecl, noreturn.}
