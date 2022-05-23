@@ -9,6 +9,9 @@ const deviceArch {.strdefine, used.} = ""
 
 const deviceDebugInfo {.booldefine, used.} = false
 
+const deviceBuildOptions {.strdefine, used.} = ""
+
+
 when not defined(onDevice):
   import std/macros
   import std/compilesettings # the only way to get projectFull ?
@@ -22,8 +25,8 @@ when not defined(onDevice):
     let triple = when deviceKind == "cuda": " --nlvm.target=nvptx64-nvidia-cuda " else: " "
     let relType = when defined(danger): "-d:danger " elif defined(release): "-d:release " else: ""
     let dbgInfo = when deviceDebugInfo: "-g " else: ""
-    let nimcmd = nlvmPath & " c -d:onDevice " & relType & dbgInfo & triple & mpcu &
-      " --gc:none --noMain --noLinking -d:useMalloc  -d:noSignalHandler -o:" &
+    let nimcmd = nlvmPath & " c -d:onDevice " & deviceBuildOptions & " "  & relType & dbgInfo & triple & mpcu &
+      " --gc:none --noMain  --noLinking -d:useMalloc  -d:noSignalHandler -o:" &
       dest & " " & src
     echo nimcmd
     let (output, exc) = gorgeEx(nimcmd)
