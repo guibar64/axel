@@ -6,6 +6,7 @@ import std/macros
 when defined(onDevice):
   {.error: "This module is not available on device side".}
 
+import ./kernel
 import ./private/[cuda, cuda_utils]
 
 type
@@ -97,19 +98,6 @@ proc launch*(tp: DevThreadpool, fn: string, args: openArray[pointer]): FlowVar =
   check cuLaunchKernel(hfunc, tp.teams.x, tp.teams.y, tp.teams.z, tp.threads.x, tp.threads.y, 
     tp.threads.z, tp.sharedMemSize, result.stream, if args.len == 0: nil else: unsafeAddr(args[0]), nil)
 
-proc launch*(tp: DevThreadpool, fn: string, a,b: (uint, uint), ret: ptr UncheckedArray[uint]): FlowVar =
-  check cuCtxSetCurrent(tp.ctx) # ?
-  var hfunc: CUfunction
-  check cuModuleGetFunction(addr hfunc, tp.module, fn.cstring)
-  result = newFlowvar()
-  var
-    a = a
-    b = b
-    ret = ret
-  var args {.align: 16.} = [pointer(addr a), addr b, addr ret]
-  check cuLaunchKernel(hfunc, tp.teams.x, tp.teams.y, tp.teams.z, tp.threads.x, tp.threads.y, 
-    tp.threads.z, tp.sharedMemSize, result.stream, addr args[0], nil)
-
 template tempAndTakeAddr(o): pointer =
   let o2 = o
   pointer(unsafeAddr o2)
@@ -133,11 +121,15 @@ macro spawn*(tp: DevThreadpool, fnCall: typed): untyped =
   fnCall.expectKind {nnkCall, nnkCommand}
   let fn = fnCall[0].getImpl()
   var fname = fnCall[0].strVal()
+  var hasKernelTag = false
   if fn != nil:
     for p in fn[4]:
       if p.kind in {nnkCall,nnkExprColonExpr} and p.len >= 2 and p[0].kind == nnkIdent and p[0].eqIdent("exportc"):
         fname = p[1].strVal()
-        break
+      elif p.kind == nnkCall and p[0].kind == nnkSym and p[0].eqIdent("kerneltag"):
+        hasKernelTag = true
+  if not hasKernelTag:
+    error("Error: '" & fnCall[0].strVal() & "' needs to be a kernel")
   var args = nnkBracket.newTree()
   for i in 1..<fnCall.len:
     let arg = fnCall[i]
