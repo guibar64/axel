@@ -21,12 +21,14 @@ when not defined(onDevice):
     let ext = when deviceKind == "cuda": ".ptx" else: ".o"
     let dest = src & ext
     # default version 37, otherwise libdevice is not compiled
-    let mpcu = " --nlvm.cpu='" & (when deviceArch == "": (when deviceKind == "cuda":  "sm_37" else: "") else: deviceArch) & "' "
+    let mpcu = " --nlvm.cpu='" & (when deviceArch == "": (when deviceKind ==
+        "cuda": "sm_37" else: "") else: deviceArch) & "' "
     let triple = when deviceKind == "cuda": " --nlvm.target=nvptx64-nvidia-cuda " else: " "
     let relType = when defined(danger): "-d:danger " elif defined(release): "-d:release " else: ""
     let dbgInfo = when deviceDebugInfo: "-g " else: ""
-    let nimcmd = nlvmPath & " c -d:onDevice " & deviceBuildOptions & " "  & relType & dbgInfo & triple & mpcu &
-      " --gc:none --noMain  --noLinking -d:useMalloc  -d:noSignalHandler -o:" &
+    let nimcmd = nlvmPath & " c -d:onDevice " & deviceBuildOptions & " " & relType & dbgInfo &
+        triple & mpcu &
+      " --gc:arc --noMain  --noLinking -d:useMalloc  -d:noSignalHandler -o:" &
       dest & " " & src
     echo nimcmd
     let (output, exc) = gorgeEx(nimcmd)
