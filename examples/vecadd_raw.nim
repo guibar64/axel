@@ -2,7 +2,6 @@ import axel/device
 
 proc vecAdd(a, b, c: ptr UncheckedArray[float32], n: int) {.kernel.} =
   let i = thisTeam()*numThreads() + thisThread()
-  echo thisTeam()
   if i < n:
     c[i] = a[i] + b[i]
 
