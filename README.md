@@ -3,7 +3,7 @@
 
 Threadpool-like for managing device compute kernels
 
-**Note**: This is experimental, currently based of a fork of [nlvm](https://github.com/arnetheduck/nlvm), for now only nvdia GPU (via CUDA driver API) are supported.
+**Note**: This is experimental, currently based of a fork of [nlvm](https://github.com/arnetheduck/nlvm), for now only nvdia GPUs (via CUDA driver API) are supported.
 ```
 
 ### Motivating example: vecAdd
@@ -50,7 +50,7 @@ when not defined(onDevice):
     doAssert abs(c[i] - (a[i] + b[i])) < 1.0e-6
 ```
 
-The threadpool API is based [guidelines](https://github.com/nim-lang/RFCs/issues/347#task-parallelism-api),
+The threadpool API is based on the these [guidelines](https://github.com/nim-lang/RFCs/issues/347#task-parallelism-api),
 and tries to follow the [nim-taskpools](https://github.com/status-im/nim-taskpools) implementation. The main difference being
 that a ``spawn`` launches a grid of tasks instead of a single one.
 
@@ -74,8 +74,8 @@ let fv3 = tp.grid(10, 256).spawn myKernel(!c)
 
 ### Prerequisites
 
-- an NVIDIA GPU with the CUDA driver library installed
-- ``libdevice`` LLVM library for math functions (``axel/math`` module), usually found in a full CUDA installations. Option ``--nlvm.cuda.path=…`` added to nim.cfg/config.nims can help.
+- an NVIDIA GPU with the CUDA driver library installed (not necessary for compilation)
+- ``libdevice`` LLVM library for math functions (``axel/math`` module), usually found in a full CUDA installations. Path to CUDA can be set with compiler option ``--nlvm.cuda.path=…``. Default on Linux is ``/opt/cuda``, elsewhere it is empty.
 Use ``--nlvm.cuda.nolibdevice`` to ignore it.
 - nlvm: nlvm is only available on x86_64-Linux (incl. WSL), with some tweaking of the Makefile it may work on other platforms (full support of other targets is not required, regular ``nim`` is enough for host code)
 
@@ -99,9 +99,9 @@ Building can be done by
 make STATIC_LLVM=1
 ```
 
-**Warning**: The simple command ``make`` will try to build LLVM, which can take 1h or so, and can take more than 1GB/core.
+**Warning**: The simple command ``make`` will try to build LLVM from source, which can take hours, and can use more than 1GB/core.
 
-The resulting binary is located in the ``nlvm/`` subfolder, adding this folder to the ``PATH`` is advisable.
+The resulting binary is located in the ``nlvm/`` subfolder, adding this folder to the ``PATH`` is advisable (otherwise the define option ``-d:nlvmPath="/path/to/nlvm/exe"`` can be used).
 
 Now the Nim compiler can be used on the examples or tests, ``nlvm`` with be invoked under the hood.
 
@@ -110,13 +110,14 @@ To compile the host code with nlvm you have to pass options to the linker, like 
 nlvm c --dynlibOverride:cuda --passl:"-L/opt/cuda/lib64 -lcuda" tests/test1.nim
 ```
 
-**Warning**: the patched nlvm overrides the target cpu ``ia64`` on the Nim side to get it going
+**Warning**: the patched nlvm overrides the target cpu ``ia64`` on the Nim side to get it going.
 
-### Garbage collection and exceptions
+### Memory management and exceptions
 
-At this moment, none of Nim's memory management schemes work but for ``--gc:none``, calls like ``newSeq`` crash.
-One can use manual MM (``alloc``/``dealloc``), besides the use of preallocated global/shared memory which is more customary on GPUs. Shared memory allocated at launch is accessible via the call ``getSharedMemBuffer()``.
+Thanks to recent upstream changes of ``nlvm``, there is some initial support for ``--gc:arc``, that is ``seq``, ``string``, ``ref`` types can be used.
 
-Exceptions are a non-starter
+Shared memory allocated at launch is accessible via the call ``getSharedMemBuffer()``. It can typically be cast to a an array buffer with a cast
+like  ``cast[Shared ptr UncheckedArray[T]](getSharedMemBuffer())``. The syntax ``Region ptr T`` is an old Nim syntax used here to declare an 
+address space. As this feature is deprecated, it will be changed once a better solution is found.
 
-Possible directions: ``--gc:arc --exceptions:goto``, but it need nlvm support first.
+Exceptions are not supported, in particular ``except`` branches are not executed. Currently a ``raise`` will abort the launch. 
