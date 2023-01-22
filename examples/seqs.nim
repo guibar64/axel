@@ -1,21 +1,18 @@
-# Copyright (c) 2022 Guillaume Bareigts
+# Copyright (c) 2023 Guillaume Bareigts
 # Licensed and distributed under the MIT license, see LICENSE
 
-import axel/[device]
-
-import std/mersenne
-from std/math import sum
+import std/algorithm
+import axel/device
 
 proc noyau(result: ptr UncheckedArray[int], n: int) {.kernel.} =
-  let i = thisTeam()*numTeams() + thisThread()
-  var rng = newMersenneTwister(uint32(i + 24455))
-  let n = 10
-  var x = cast[ptr UncheckedArray[int]](alloc(n*sizeof(int)))
+  let idx = thisTeam()*numTeams() + thisThread()
+  let n = 2 + idx
+  var x = newSeq[int](n)
   for i in 0..<n:
-    x[i] = int(rng.getNum() mod 1024)
+    x[i] = 1 + n*(n - i)
+  var y = sorted(x)
 
-  result[i] = sum(toOpenArray(x, 0, n-1))
-  dealloc(x)
+  result[idx] = y[0]+y[1]
 
 
 when not defined(onDevice):
